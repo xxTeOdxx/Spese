@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<title>Registro Spese</title>
+<style>
+  :root{
+    --bg:#000; --card:#1C1C1E; --label:#F2F2F7; --secondary:#8E8E93; --tertiary:#3A3A3C;
+    --blue:#0A84FF; --green:#30D158; --red:#FF6961; --sep:rgba(84,84,88,.65); --segbg:rgba(118,118,128,.24);
+    color-scheme:dark; box-sizing:border-box;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html{height:100%;}
+  body{margin:0; background:var(--bg); color:var(--label); min-height:100%;
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif; -webkit-font-smoothing:antialiased;}
+  header{padding:calc(env(safe-area-inset-top,0px) + 14px) 16px 8px; text-align:center; position:sticky; top:0; background:var(--bg); z-index:10;}
+  h1{font-size:17px; font-weight:600; margin:0;}
+  .segwrap{padding:8px 16px 8px; position:sticky; top:calc(env(safe-area-inset-top,0px) + 42px); background:var(--bg); z-index:10;}
+  .seg{display:flex; background:var(--segbg); border-radius:9px; padding:2px;}
+  .seg button{flex:1; border:none; background:none; color:var(--label); min-height:40px; font-size:13px; font-weight:600; border-radius:7px; font-family:inherit; cursor:pointer;}
+  .seg button.on{background:#636366; box-shadow:0 1px 3px rgba(0,0,0,.4);}
+  main{max-width:520px; margin:0 auto; padding:0 16px calc(env(safe-area-inset-bottom,0px) + 50px);}
+  .view{display:none;} .view.active{display:block;}
+  .gt{font-size:13px; color:var(--secondary); text-transform:uppercase; letter-spacing:.02em; margin:20px 4px 7px;}
+  .card{background:var(--card); border-radius:14px; overflow:hidden;}
+  .row{display:flex; align-items:center; justify-content:space-between; padding:12px 15px; min-height:44px; border-bottom:1px solid var(--sep); font-size:16px;}
+  .row:last-child{border-bottom:none;}
+  .row input{border:none; background:none; text-align:right; font-size:16px; color:var(--blue); font-family:inherit; font-weight:600; outline:none; padding:0;}
+  .row input[type=date]{width:150px; -webkit-appearance:none;}
+  .row input[type=text].amt{width:140px;}
+  .row input.note{width:100%; text-align:left; color:var(--label); font-weight:400;}
+  .grid{display:grid; grid-template-columns:repeat(3,1fr); gap:8px;}
+  .grid.two{grid-template-columns:repeat(2,1fr); margin-top:12px;}
+  .cat{border:none; background:var(--card); color:var(--label); border-radius:12px; min-height:56px; font-family:inherit; font-size:14px; font-weight:600; cursor:pointer;}
+  .cat.on{background:var(--blue); color:#fff;}
+  .kind{min-height:52px; font-size:15px;}
+  .kind.e{color:var(--green);} .kind.u{color:var(--red);}
+  .kind.on.e{background:var(--green); color:#000;} .kind.on.u{background:#D13030; color:#fff;}
+  .save{width:100%; margin-top:18px; padding:14px; border:none; border-radius:14px; background:var(--blue); color:#fff; font-size:16px; font-weight:600; font-family:inherit; cursor:pointer;}
+  .save:active{opacity:.75;}
+  .toast{margin-top:12px; text-align:center; padding:9px; border-radius:10px; background:rgba(48,209,88,.15); color:var(--green); font-size:13px; font-weight:600; display:none;}
+  .toast.err{background:rgba(255,105,97,.15); color:var(--red);}
+  .toast.show{display:block;}
+  .hint{font-size:12px; color:var(--secondary); margin:8px 4px 0; line-height:1.4; text-align:center;}
+  .nav{display:flex; align-items:center; justify-content:space-between; margin-top:10px;}
+  .nav b{font-size:17px; font-weight:600;}
+  .arr{width:44px; height:44px; border:none; border-radius:12px; background:var(--card); color:var(--blue); display:flex; align-items:center; justify-content:center; padding:0; cursor:pointer;}
+  .arr[disabled]{color:var(--tertiary); cursor:default;}
+  .stats{display:flex; gap:10px; margin-top:14px;}
+  .stat{flex:1; background:var(--card); border-radius:14px; padding:12px 14px;}
+  .stat .l{font-size:12px; color:var(--secondary);}
+  .stat .v{font-size:20px; font-weight:600; margin-top:3px;}
+  .b{color:var(--blue);} .g{color:var(--green); font-weight:600;} .dim{color:var(--secondary);}
+  .rm{min-height:40px; padding:9px 15px;}
+</style>
+</head>
+<body>
+
+<header><h1>Registro Spese</h1></header>
+<div class="segwrap"><div class="seg">
+  <button class="tab-btn on" data-tab="registra">Registra</button>
+  <button class="tab-btn" data-tab="riepilogo">Riepilogo</button>
+</div></div>
+
+<main>
+  <section id="registra" class="view active">
+    <div class="grid two">
+      <button class="cat kind e" id="kE">Entrate</button>
+      <button class="cat kind u on" id="kU">Uscite</button>
+    </div>
+
+    <div class="card" style="margin-top:12px;">
+      <div class="row"><label for="dateInput">Data</label><input type="date" id="dateInput"></div>
+      <div class="row"><label for="amtInput">Importo (€)</label><input type="text" class="amt" id="amtInput" inputmode="decimal" placeholder="0,00"></div>
+    </div>
+
+    <div id="catWrap">
+      <div class="gt">Categoria</div>
+      <div class="grid" id="catGrid"></div>
+    </div>
+
+    <div class="gt">Note</div>
+    <div class="card"><div class="row"><input type="text" class="note" id="noteInput" placeholder="Es. supermercato, bolletta luce…" aria-label="Note"></div></div>
+
+    <button class="save" id="saveBtn">Salva</button>
+    <div class="toast" id="toast"></div>
+    <div class="hint" id="syncStatus"></div>
+  </section>
+
+  <section id="riepilogo" class="view">
+    <div class="nav">
+      <button class="arr" id="prevM" aria-label="Mese precedente"><svg width="12" height="20" viewBox="0 0 12 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2 2 10l8 8"/></svg></button>
+      <b id="monthLabel"></b>
+      <button class="arr" id="nextM" aria-label="Mese successivo"><svg width="12" height="20" viewBox="0 0 12 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m2 2 8 8-8 8"/></svg></button>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="l">Spese del mese</div><div class="v b" id="sSpese">0 €</div></div>
+      <div class="stat"><div class="l">Entrate del mese</div><div class="v g" id="sEntrate">0 €</div></div>
+    </div>
+    <div class="card" style="margin-top:10px;">
+      <div class="row"><span>Messi da parte (mese)</span><span class="g" id="sDpMese">0 €</span></div>
+      <div class="row"><span>Totale anno</span><span class="g" id="sDpAnno">0 €</span></div>
+    </div>
+    <div class="gt">Per categoria</div>
+    <div class="card" id="catRows"></div>
+    <div class="hint">Usa le frecce per cambiare mese.</div>
+  </section>
+</main>
+
+<script>
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwkC0kI38swb5IXcbeJBwTq9DlvgHO8KQYbRQFMQxXQrDo2wdZ2lVBdIefP6yXhQvQ/exec";   // URL che finisce con /exec
+const TOKEN = "fogliospese";                          // identico a TOKEN dentro Code.gs
+const FIRST_YEAR = 2026;                                // primo anno della tabella (poi i fogli nuovi si creano da soli)
+
+const CATS = ["Bollette","Spesa","Cibo","Svago","Viaggi","Altro","Speciali","Mezzi","Carburante","Salute","Shopping","Da parte"];
+const MESI = ["Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno","Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre"];
+const KEY = "spese_cache_v2", QKEY = "spese_queue_v1";
+
+function load(k, def){ try{ const r = localStorage.getItem(k); return r ? JSON.parse(r) : def; }catch(e){ return def; } }
+function store(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+
+let data = load(KEY, { years:{} });
+let queue = load(QKEY, []);
+let kind = "u", cat = "Spesa";
+let month = new Date().getMonth();
+let year = new Date().getFullYear();
+const CUR_YEAR = year;
+
+const $ = id => document.getElementById(id);
+const fmt = n => n.toLocaleString("it-IT",{minimumFractionDigits:2, maximumFractionDigits:2}) + " €";
+const zeros = () => Array(12).fill(0);
+function todayKey(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function status(msg, bad){ const s = $("syncStatus"); s.textContent = msg; s.style.color = bad ? "var(--red)" : "var(--secondary)"; }
+function showToast(msg, err){ const t = $("toast"); t.textContent = msg; t.classList.toggle("err", !!err); t.classList.add("show"); setTimeout(()=>t.classList.remove("show"), 1800); }
+
+// valori del foglio + operazioni ancora in coda (così il riepilogo è subito aggiornato)
+function currentRows(){
+  const rows = {};
+  const base = data.years[year] || {};
+  ["Entrate"].concat(CATS).forEach(k => { rows[k] = (base[k] || zeros()).slice(); });
+  queue.forEach(op => { if(op.anno === year && rows[op.cat]) rows[op.cat][op.mese] += op.importo; });
+  return rows;
+}
+
+// ---- sync con Apps Script ----
+let flushing = false;
+async function flush(){
+  if(flushing || !queue.length) return;
+  flushing = true;
+  try{
+    while(queue.length){
+      const op = Object.assign({ token: TOKEN }, queue[0]);
+      const res = await fetch(SCRIPT_URL, { method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" }, body: JSON.stringify(op) });
+      const r = await res.json();
+      if(r.error === "token"){ status("Token non valido: controlla TOKEN in index.html e in Code.gs", true); break; }
+      queue.shift(); store(QKEY, queue);
+    }
+    if(!queue.length) status("Sincronizzato con Google Sheet");
+  }catch(err){
+    status("Offline: salvo qui e riprovo alla prossima apertura", true);
+  }
+  flushing = false;
+  await pull();
+}
+async function pull(){
+  if(queue.length) return;
+  const y = year;
+  try{
+    const res = await fetch(SCRIPT_URL + "?token=" + encodeURIComponent(TOKEN) + "&anno=" + y);
+    const j = await res.json();
+    if(j.rows){ data.years[y] = j.rows; store(KEY, data); }
+    else if(j.error === "token"){ status("Token non valido: controlla TOKEN in index.html e in Code.gs", true); }
+  }catch(err){
+    status("Offline: mostro i dati salvati su questo dispositivo", true);
+  }
+  renderRiepilogo();
+}
+
+// ---- tab ----
+document.querySelectorAll(".tab-btn").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    document.querySelectorAll(".tab-btn").forEach(b=>b.classList.toggle("on", b === btn));
+    document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
+    $(btn.dataset.tab).classList.add("active");
+    if(btn.dataset.tab === "riepilogo") renderRiepilogo();
+  });
+});
+
+// ---- registra ----
+function renderCats(){
+  $("catGrid").innerHTML = CATS.map(c => `<button class="cat${c===cat?" on":""}" data-c="${c}">${c}</button>`).join("");
+  $("catGrid").querySelectorAll("button").forEach(b => b.addEventListener("click", ()=>{ cat = b.dataset.c; renderCats(); }));
+}
+function setKind(k){
+  kind = k;
+  $("kE").classList.toggle("on", k === "e");
+  $("kU").classList.toggle("on", k === "u");
+  $("catWrap").style.display = k === "u" ? "block" : "none";
+}
+$("kE").addEventListener("click", ()=>setKind("e"));
+$("kU").addEventListener("click", ()=>setKind("u"));
+
+$("saveBtn").addEventListener("click", ()=>{
+  const importo = parseFloat($("amtInput").value.replace(",", "."));
+  const dataKey = $("dateInput").value || todayKey();
+  if(!(importo > 0)){ $("amtInput").focus(); return; }
+  const [y, m] = dataKey.split("-").map(Number);
+  if(y < FIRST_YEAR || y > CUR_YEAR){ showToast("Scegli una data tra il " + FIRST_YEAR + " e il " + CUR_YEAR, true); return; }
+  const op = {
+    id: Date.now() + "-" + Math.random().toString(36).slice(2, 8),
+    data: dataKey, anno: y, mese: m - 1, tipo: kind,
+    cat: kind === "e" ? "Entrate" : cat,
+    importo: Math.round(importo * 100) / 100,
+    nota: $("noteInput").value.trim()
+  };
+  queue.push(op); store(QKEY, queue);
+  $("amtInput").value = ""; $("noteInput").value = "";
+  showToast("Salvato");
+  status("Invio al foglio…");
+  renderRiepilogo();
+  flush();
+});
+
+// ---- riepilogo ----
+const sum = a => a.reduce((t, x) => t + x, 0);
+function renderRiepilogo(){
+  const rows = currentRows();
+  $("monthLabel").textContent = MESI[month] + " " + year;
+  $("prevM").disabled = year === FIRST_YEAR && month === 0;
+  $("nextM").disabled = year === CUR_YEAR && month === 11;
+  const spese = sum(CATS.filter(c => c !== "Da parte").map(c => rows[c][month]));
+  $("sSpese").textContent = fmt(spese);
+  $("sEntrate").textContent = fmt(rows["Entrate"][month]);
+  $("sDpMese").textContent = fmt(rows["Da parte"][month]);
+  $("sDpAnno").textContent = fmt(sum(rows["Da parte"]));
+  $("catRows").innerHTML = CATS.map(c => {
+    const v = rows[c][month];
+    return `<div class="row rm"><span>${c}</span><span class="${v > 0 ? "g" : "dim"}">${fmt(v)}</span></div>`;
+  }).join("");
+}
+$("prevM").addEventListener("click", ()=>{
+  if(month > 0){ month--; }
+  else if(year > FIRST_YEAR){ year--; month = 11; pull(); }
+  renderRiepilogo();
+});
+$("nextM").addEventListener("click", ()=>{
+  if(month < 11){ month++; }
+  else if(year < CUR_YEAR){ year++; month = 0; pull(); }
+  renderRiepilogo();
+});
+
+// ---- avvio ----
+$("dateInput").value = todayKey();
+$("dateInput").min = FIRST_YEAR + "-01-01";
+$("dateInput").max = CUR_YEAR + "-12-31";
+renderCats();
+renderRiepilogo();
+if(SCRIPT_URL.indexOf("INCOLLA") === 0){
+  status("Manca l'URL della web app: modifica SCRIPT_URL in index.html", true);
+}else{
+  (async ()=>{ await flush(); await pull(); })();
+}
+</script>
+</body>
+</html>
