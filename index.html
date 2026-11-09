@@ -54,6 +54,10 @@
   .stat .v{font-size:20px; font-weight:600; margin-top:3px;}
   .b{color:var(--blue);} .g{color:var(--green); font-weight:600;} .dim{color:var(--secondary);}
   .rm{min-height:40px; padding:9px 15px;}
+  .mv{padding:10px 15px;}
+  .mt{font-size:15px; font-weight:500;}
+  .ms{font-size:12px; color:var(--secondary); margin-top:2px;}
+  .mv > span{font-weight:600; white-space:nowrap; margin-left:12px;}
 </style>
 </head>
 <body>
@@ -99,12 +103,18 @@
       <div class="stat"><div class="l">Spese del mese</div><div class="v b" id="sSpese">0 €</div></div>
       <div class="stat"><div class="l">Entrate del mese</div><div class="v g" id="sEntrate">0 €</div></div>
     </div>
+    <div class="stat" style="margin-top:10px; display:flex; align-items:center; justify-content:space-between;">
+      <div style="font-size:15px;">Disponibile</div>
+      <div class="v" id="sDisp" style="margin:0;">0 €</div>
+    </div>
     <div class="card" style="margin-top:10px;">
       <div class="row"><span>Messi da parte (mese)</span><span class="g" id="sDpMese">0 €</span></div>
       <div class="row"><span>Totale anno</span><span class="g" id="sDpAnno">0 €</span></div>
     </div>
     <div class="gt">Per categoria</div>
     <div class="card" id="catRows"></div>
+    <div class="gt">Movimenti</div>
+    <div class="card" id="movRows"></div>
     <div class="hint">Usa le frecce per cambiare mese.</div>
   </section>
 </main>
@@ -122,6 +132,7 @@ function load(k, def){ try{ const r = localStorage.getItem(k); return r ? JSON.p
 function store(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
 
 let data = load(KEY, { years:{} });
+data.movs = data.movs || {};
 let queue = load(QKEY, []);
 let kind = "u", cat = "Spesa";
 let month = new Date().getMonth();
@@ -170,7 +181,7 @@ async function pull(){
   try{
     const res = await fetch(SCRIPT_URL + "?token=" + encodeURIComponent(TOKEN) + "&anno=" + y);
     const j = await res.json();
-    if(j.rows){ data.years[y] = j.rows; store(KEY, data); }
+    if(j.rows){ data.years[y] = j.rows; data.movs[y] = j.movs || []; store(KEY, data); }
     else if(j.error === "token"){ status("Token non valido: controlla TOKEN in index.html e in Code.gs", true); }
   }catch(err){
     status("Offline: mostro i dati salvati su questo dispositivo", true);
@@ -234,11 +245,28 @@ function renderRiepilogo(){
   $("sSpese").textContent = fmt(spese);
   $("sEntrate").textContent = fmt(rows["Entrate"][month]);
   $("sDpMese").textContent = fmt(rows["Da parte"][month]);
+  const disp = rows["Entrate"][month] - spese - rows["Da parte"][month];
+  $("sDisp").textContent = fmt(disp);
+  $("sDisp").style.color = disp < 0 ? "var(--red)" : "var(--green)";
   $("sDpAnno").textContent = fmt(sum(rows["Da parte"]));
   $("catRows").innerHTML = CATS.map(c => {
     const v = rows[c][month];
     return `<div class="row rm"><span>${c}</span><span class="${v > 0 ? "g" : "dim"}">${fmt(v)}</span></div>`;
   }).join("");
+
+  // movimenti singoli del mese (dal registro + quelli ancora in invio)
+  const srv = (data.movs[year] || []).filter(x => Number(String(x.data).slice(5, 7)) - 1 === month);
+  const ids = {}; srv.forEach(x => { ids[x.id] = 1; });
+  const pend = queue.filter(op => op.anno === year && op.mese === month && !ids[op.id])
+    .map(op => ({ id:op.id, data:op.data, tipo:op.tipo, cat:op.cat, importo:op.importo, nota:op.nota, pend:true }));
+  const list = srv.concat(pend).reverse().sort((a, b) => a.data < b.data ? 1 : a.data > b.data ? -1 : 0);
+  const esc = t => String(t).replace(/[&<>"]/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[ch]));
+  $("movRows").innerHTML = list.length ? list.map(x => {
+    const day = Number(String(x.data).slice(8, 10));
+    const colour = x.tipo === "e" ? "g" : (x.cat === "Da parte" ? "b" : "");
+    const sign = x.tipo === "e" ? "+" : "−";
+    return `<div class="row mv"><div><div class="mt">${x.cat}</div><div class="ms">${day} ${MESI[month].slice(0, 3).toLowerCase()}${x.nota ? " · " + esc(x.nota) : ""}${x.pend ? " · in invio" : ""}</div></div><span class="${colour}">${sign}${fmt(x.importo)}</span></div>`;
+  }).join("") : `<div class="row rm dim">Nessun movimento</div>`;
 }
 $("prevM").addEventListener("click", ()=>{
   if(month > 0){ month--; }
@@ -265,3 +293,4 @@ if(SCRIPT_URL.indexOf("INCOLLA") === 0){
 </script>
 </body>
 </html>
+
